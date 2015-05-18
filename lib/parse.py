@@ -5,6 +5,7 @@
 # first add the directory to the search path
 import os
 import sys
+import pinyin
 bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
 sys.path.append(bindir)
 import re
@@ -80,6 +81,19 @@ def mergeSameSrt(subs1, subs2):
             sub2 = record2[2]
             record = (record1[0], record1[1], record1[2] + sub2)
             subs[key1] = record
+    return subs 
+
+def addPinyinToEnglishSrt(subs1):
+    """ 
+    addPinyinToEnglishSrt takes dictionary and returns new dictionary 
+    containing hanzi and pinyin
+    """
+    subs = {}
+    for key1 in subs1:
+        record1 = subs1[key1]
+        pin = pinyin.get(record1[2])
+        record = (record1[0], record1[1], record1[2] + pin)
+        subs[key1] = record
     return subs 
 def printSrt(filename, subs):
     srtfile = open(filename,"w")

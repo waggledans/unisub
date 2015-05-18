@@ -17,6 +17,10 @@ def main (argv):
 
     if os.path.isfile(file1) and os.access(file1, os.R_OK):
         hash1 = parse.srtToHash(file1)
+        if sys.argv[3] == 'pinyin':
+            pinyin_subs = parse.addPinyinToEnglishSrt(hash1)
+            parse.printSrt(file2,pinyin_subs)
+            sys.exit(0)
     else:
         sys.exit(3)
     if os.path.isfile(file2) and os.access(file2, os.R_OK):
