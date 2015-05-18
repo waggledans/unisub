@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 # first add the directory to the search path
-import sys
 import getopt
 import re
 import os
 import os.path
 from lib import parse
+import sys
+reload(sys)  
+sys.setdefaultencoding('utf8')
 
 def main (argv):
     if len(sys.argv) < 3:
