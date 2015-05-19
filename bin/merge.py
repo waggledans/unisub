@@ -5,6 +5,8 @@ import getopt
 import re
 import os
 import os.path
+import pprint
+import time
 from lib import parse
 import sys
 reload(sys)  
@@ -16,22 +18,21 @@ def main (argv):
         sys.exit(2)
     file1 = sys.argv[1]
     file2 = sys.argv[2]
-
     if os.path.isfile(file1) and os.access(file1, os.R_OK):
-        hash1 = parse.srtToHash(file1)
-        if sys.argv[3] == 'pinyin':
+        hash1 = parse.ParsedSrtFile.fromFilename(file1)
+        if len(sys.argv) > 3 and sys.argv[3] == 'pinyin':
             pinyin_subs = parse.addPinyinToEnglishSrt(hash1)
-            parse.printSrt(file2,pinyin_subs)
+            pinyin_subs.printSrt(file2)
             sys.exit(0)
     else:
         sys.exit(3)
     if os.path.isfile(file2) and os.access(file2, os.R_OK):
-        hash2 = parse.srtToHash(file2)
+        hash2 = parse.ParsedSrtFile.fromFilename(file2)
     else:
         sys.exit(4)
-    subs = parse.mergeSameSrt(hash1, hash2)
+    subs = hash1.mergeSameSrt(hash2)    
     out_file = re.sub("\.srt$", "_merged.str", file1)
-    parse.printSrt(out_file, subs)
+    subs.printSrt(out_file)
 
 def longopts_example(argv):
    ifile = ''
