@@ -1,12 +1,31 @@
 #!/usr/bin/env python
 
-# first add the directory to the search path
+#Copyright (c) 2015 Dan Slov
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+
 import getopt
 import re
 import os
 import os.path
-import pprint
-import time
+#import time
 from lib import parse
 import sys
 reload(sys)  
@@ -19,20 +38,20 @@ def main (argv):
     file1 = sys.argv[1]
     file2 = sys.argv[2]
     if os.path.isfile(file1) and os.access(file1, os.R_OK):
-        hash1 = parse.ParsedSrtFile.fromFilename(file1)
+        srtDBToModify = parse.SrtObject.fromFilename(file1)
         if len(sys.argv) > 3 and sys.argv[3] == 'pinyin':
-            pinyin_subs = parse.addPinyinToEnglishSrt(hash1)
+            pinyin_subs = srtDBToModify.addPinyinToEnglishSrt()
             pinyin_subs.printSrt(file2)
             sys.exit(0)
     else:
         sys.exit(3)
     if os.path.isfile(file2) and os.access(file2, os.R_OK):
-        hash2 = parse.ParsedSrtFile.fromFilename(file2)
+        srtDBToAdd = parse.SrtObject.fromFilename(file2)
     else:
         sys.exit(4)
-    subs = hash1.mergeSameSrt(hash2)    
+    mergedSrtDB = srtDBToModify.mergeSrtDB(srtDBToAdd)    
     out_file = re.sub("\.srt$", "_merged.str", file1)
-    subs.printSrt(out_file)
+    mergedSrtDB.printSrt(out_file)
 
 def longopts_example(argv):
    ifile = ''
