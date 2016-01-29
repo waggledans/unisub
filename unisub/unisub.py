@@ -22,17 +22,8 @@
 
 
 """ Module for parsing SubRip test files (.srt extension)  """
-# imports section
-# first add the directory to the search path
-import os
-import sys
 import pinyin
-import pprint
-bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
-sys.path.append(bindir)
 import re
-# End of imports
-
 
 ##### CONSTANTS ######
 class _CONST(object):
@@ -88,10 +79,21 @@ class _SrtEntry(object):
 class SrtObject(object):
     srtDB = {}
     filename = ""
+
     def __init__(self, **srtDB):
         #  init class members ######
         self.srtDB = srtDB
         self.filename = ""
+
+    def __eq__(self, other):
+        # TODO:: implement
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @classmethod
     def fromFilename(cls, filename):
@@ -107,17 +109,14 @@ class SrtObject(object):
             The value of the dictionary is the list (number, time, text)    
         """
         srtfile = open(filename,"r")
-##### temp variables ######
+        ##### temp variables ######
         saveOn = False  # saveOn is True when a line containing time to show subs is matched
         # saveOn is False when empty line is matched
         lastKey = "NONE"
         subNumber = 0
-#####  variables ######
+        #####  variables ######
         for line in srtfile: 
-            #print(line)
-            #line = line.rstrip()
             if(re.match(CONST.currentSubNumberPattern, line) and not saveOn): # means we start a new sub
-                #subNumber = int(line)
                 subNumber = line
             match = re.match(CONST.timeFramePattern,line)
             # Example: 00:00:03,748 --> 00:00:06,901
@@ -132,18 +131,17 @@ class SrtObject(object):
                     # smth is wrong, TODO:: raise EXCEPTIONS
                     # or maybe just do nothing
                     continue
-                #print(match.group(1))
             else:
                 if (re.match(CONST.subSeparator, line)):
                     saveOn = False    #saveOn is false, move on to the next sub
                 if (saveOn):
                     #assuming multiline sub
                     self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line 
-        #pprint.pprint(self.srtDB)            
         srtfile.close()
-# mergeSrtDB appends subs2 to subs11
+
     def mergeSrtDB(self, subs2):
         """ 
+        Merges two sub objects
         mergeSrtDB assumes that both dictionaries contain exactly the same set of keys
         """
         subs_merged = {}
@@ -156,24 +154,39 @@ class SrtObject(object):
         return SrtObject(**subs_merged)        
 
     def printSrt(self, filename):
+        """ 
+        Prints subtitles object in .srt format        
+        """
         srtfile = open(filename,"w")
         for key in sorted(self.srtDB):
             srtfile.write(self.srtDB[key].toString())
             srtfile.write("\n")
         srtfile.close()
 
-    def addPinyinToEnglishSrt(self):
+    def srtHanziToPinyin(self):
         """ 
-        addPinyinToEnglishSrt takes dictionary and returns new dictionary 
-        containing hanzi and pinyin
+        Converts all hanzi to pinyin
+        """
+        subs_pinyin = {}
+        for key in self.srtDB:
+            one_sub = self.srtDB[key]
+            pin = pinyin.get(one_sub.subText)
+            new_sub = _SrtEntry(one_sub.subNumber, one_sub.timeFrame, pin)
+            subs_pinyin[key] = new_sub
+        return SrtObject(**subs_pinyin)
+
+    def addPinyinToHanziSrt(self):
+        """ 
+        Appends pinyin to hanzi text
         """
         subs_merged = {}
         for key in self.srtDB:
-            record1 = self.srtDB[key]
-            pin = pinyin.get(record1.subText)
-            record = _SrtEntry(record1.subNumber, record1.timeFrame, record1.subText + pin)
-            subs_merged[key] = record
+            one_sub = self.srtDB[key]
+            pin = pinyin.get(one_sub.subText)
+            new_sub = _SrtEntry(one_sub.subNumber, one_sub.timeFrame, one_sub.subText + pin)
+            subs_merged[key] = new_sub
         return SrtObject(**subs_merged)
+
 class Date(object):
     day = 0
     month = 0

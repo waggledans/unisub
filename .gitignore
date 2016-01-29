@@ -3,3 +3,8 @@
 .netrwhist
 test_results
 *.pyc
+tags
+refs
+build
+dist
+*egg-info

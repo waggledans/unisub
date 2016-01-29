@@ -1,5 +1,4 @@
 from nose.tools import *
-import unisub
 
 def setup():
     print "SETUP!"
