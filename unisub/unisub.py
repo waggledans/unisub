@@ -51,6 +51,22 @@ class _SrtEntry(object):
         self.subNumber = subNumber
         self.timeFrame = timeFrame
         self.subText = subText
+
+    def __str__(self):
+        return self.subNumber + ' ' + self.timeFrame + ' ' + self.subText
+
+    def __repr__(self):
+        return "subNumber: " + self.subNumber + ', timeFrame: ' + self.timeFrame + ',subText: ' + self.subText
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def extractTimeFromTimeFrame (self):
         if not self.timeFrame:
             self.startTime = 0
@@ -80,15 +96,17 @@ class SrtObject(object):
     srtDB = {}
     filename = ""
 
-    def __init__(self, **srtDB):
+    def __init__(self, srtDB):
         #  init class members ######
         self.srtDB = srtDB
         self.filename = ""
 
+    def __str__(self):
+        return str(self.srtDB)
+
     def __eq__(self, other):
-        # TODO:: implement
         if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
+            return self.srtDB == other.srtDB
         else:
             return False
 
@@ -97,7 +115,7 @@ class SrtObject(object):
 
     @classmethod
     def fromFilename(cls, filename):
-        srtDB = cls()
+        srtDB = cls({})
         srtDB.buildSrtDB(filename)
         return srtDB
 
@@ -105,19 +123,19 @@ class SrtObject(object):
         if not filename:
             filename = self.filename
         """ buildSrtDB takes .srt file name as an argument.
-            The starting time of each entry is used as a dictionary key
-            The value of the dictionary is the list (number, time, text)    
+            Timeframe of each entry is used as a dictionary key
+            The value of the dictionary is the object containing (number, time, text) of subtitle entry
         """
         srtfile = open(filename,"r")
         ##### temp variables ######
         saveOn = False  # saveOn is True when a line containing time to show subs is matched
         # saveOn is False when empty line is matched
-        lastKey = "NONE"
+        lastKey = "NONEMATCHED"
         subNumber = 0
-        #####  variables ######
-        for line in srtfile: 
+        for line in srtfile:
             if(re.match(CONST.currentSubNumberPattern, line) and not saveOn): # means we start a new sub
                 subNumber = line
+                continue
             match = re.match(CONST.timeFramePattern,line)
             # Example: 00:00:03,748 --> 00:00:06,901
             if (match):
@@ -128,7 +146,7 @@ class SrtObject(object):
                     lastKey = match.group(1)
                     self.srtDB[lastKey] = srtEntry
                 else:
-                    # smth is wrong, TODO:: raise EXCEPTIONS
+                    # smth is wrong, TODO:: raise EXCEPTION
                     # or maybe just do nothing
                     continue
             else:
@@ -136,11 +154,11 @@ class SrtObject(object):
                     saveOn = False    #saveOn is false, move on to the next sub
                 if (saveOn):
                     #assuming multiline sub
-                    self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line 
+                    self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
         srtfile.close()
 
     def mergeSrtDB(self, subs2):
-        """ 
+        """
         Merges two sub objects
         mergeSrtDB assumes that both dictionaries contain exactly the same set of keys
         """
@@ -151,11 +169,11 @@ class SrtObject(object):
                 record2 = subs2.srtDB[key1]
                 record = _SrtEntry (record1.subNumber, record1.timeFrame, record1.subText + record2.subText)
                 subs_merged[key1] = record
-        return SrtObject(**subs_merged)        
+        return SrtObject(subs_merged)
 
     def printSrt(self, filename):
-        """ 
-        Prints subtitles object in .srt format        
+        """
+        Prints subtitles object in .srt format
         """
         srtfile = open(filename,"w")
         for key in sorted(self.srtDB):
@@ -164,7 +182,7 @@ class SrtObject(object):
         srtfile.close()
 
     def srtHanziToPinyin(self):
-        """ 
+        """
         Converts all hanzi to pinyin
         """
         subs_pinyin = {}
@@ -173,10 +191,10 @@ class SrtObject(object):
             pin = pinyin.get(one_sub.subText)
             new_sub = _SrtEntry(one_sub.subNumber, one_sub.timeFrame, pin)
             subs_pinyin[key] = new_sub
-        return SrtObject(**subs_pinyin)
+        return SrtObject(subs_pinyin)
 
     def addPinyinToHanziSrt(self):
-        """ 
+        """
         Appends pinyin to hanzi text
         """
         subs_merged = {}
@@ -185,7 +203,7 @@ class SrtObject(object):
             pin = pinyin.get(one_sub.subText)
             new_sub = _SrtEntry(one_sub.subNumber, one_sub.timeFrame, one_sub.subText + pin)
             subs_merged[key] = new_sub
-        return SrtObject(**subs_merged)
+        return SrtObject(subs_merged)
 
 class Date(object):
     day = 0

@@ -27,7 +27,7 @@ import os.path
 #import time
 from unisub import unisub
 import sys
-reload(sys)  
+reload(sys)
 sys.setdefaultencoding('utf8')
 
 def parse_args():
@@ -38,33 +38,32 @@ def parse_args():
     parser.add_argument('-i', '--in-srt', help=help, required = True)
     help = "Additional srt file"
     parser.add_argument('-e', '--extra-srt', help=help)
-    help = "Output srt file"
+    help = "Output srt file. By default is the same name as input file with 'out' suffix added"
     parser.add_argument('-o', '--out-srt', help=help)
     help = "Combining hanzi and pinyin into one srt file"
     parser.add_argument('-c', '--combine-srt', action='store_true', help=help)
     help = "Increase output verbosity"
     parser.add_argument("-v", "--verbosity", action="count", default=0, help=help)
     args = parser.parse_args()
-    return args 
+    return args
 def main (argv):
     args = parse_args()
     if not args.out_srt:
-	args.out_srt = re.sub( r".srt$", ".out.srt", args.in_srt)
-    if os.path.isfile(args.in_srt) and os.access(args.in_srt, os.R_OK):
+        args.out_srt = re.sub( r".srt$", ".out.srt", args.in_srt)
+    try:
         srtDBToModify = unisub.SrtObject.fromFilename(args.in_srt)
-	if not args.extra_srt:
-            # srtDBToAdd = srtDBToModify.addPinyinToHanziSrt()
+        if not args.extra_srt:
             srtDBToAdd = srtDBToModify.srtHanziToPinyin()
-	    if not args.combine_srt:
-		mergedSrtDB = srtDBToAdd
-	elif os.path.isfile(args.extra_srt) and os.access(args.extra_srt, os.R_OK):
-	    srtDBToAdd = unisub.SrtObject.fromFilename(args.extra_srt)
-	    args.combine_srt = True
-    else:
-	print "Error - the file doesnt exist"
+            if not args.combine_srt:
+                mergedSrtDB = srtDBToAdd
+        elif os.path.isfile(args.extra_srt) and os.access(args.extra_srt, os.R_OK):
+            srtDBToAdd = unisub.SrtObject.fromFilename(args.extra_srt)
+            args.combine_srt = True
+    except (OSError, IOError) as e:
+        print e
         sys.exit(1)
     if args.combine_srt:
-	mergedSrtDB = srtDBToModify.mergeSrtDB(srtDBToAdd)
+        mergedSrtDB = srtDBToModify.mergeSrtDB(srtDBToAdd)
     mergedSrtDB.printSrt(args.out_srt)
 
 if __name__ == "__main__":
