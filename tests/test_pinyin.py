@@ -46,3 +46,6 @@ class TestPinyin(unittest.TestCase):
     def testSrtHanziAndPinyinFileGenerate(self):
         pass
 
+    def testSrtWrongFormat(self):
+        pass
+        #assertRaises()

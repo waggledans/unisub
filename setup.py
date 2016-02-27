@@ -1,8 +1,7 @@
 # encoding: utf-8
 import setuptools
 
-version = "1.0.0"
-
+version = "1.0.1"
 
 # Generate Requirements
 requirements = list()
@@ -17,8 +16,9 @@ setuptools.setup(
     version=version,
     description='Manipulating mandarin subtitles (.srt) file',
     long_description='''
-        Unisub allows merge 2 different subtitles files together, as well
-        as converting mandarin characters (hanzi) into pinyin
+        Unisub is meant for adding pinyin to mandarin subtitles
+        but it could be used to merge 2 different subs files together,
+        as well as converting mandarin characters (hanzi) into pinyin
         ''',
     url="https://github.com/waggledans/unisub",
     author="Dan Slov",
