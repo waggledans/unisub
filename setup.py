@@ -31,18 +31,7 @@ setuptools.setup(
         'Topic :: Chinese :: pinyin'
     ],
     test_suite='tests',
-    packages = [
-        'unisub'
-        ],
-    entry_points={
-        'bin': [
-            'merge = merge:main',
-        ],
-    },
-    package_data={
-        "unisub": [
-            'LICENSE',
-        ],
-    },
+    packages=['unisub'],
+    scripts=['bin/do_srt.py'],
     install_requires=requirements
 )

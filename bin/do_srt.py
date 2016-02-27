@@ -55,7 +55,7 @@ def parse_args():
     return args
 
 
-def main(argv):
+def main(argv=None):
     """
     ## Mandarin subs - add pinyin (or generate separate pinyin only srt file)
         1. Find a movie in Chinese
