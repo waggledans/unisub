@@ -13,9 +13,9 @@ class TestPinyin(unittest.TestCase):
     def setUp(self):
         super(self.__class__,self).setUp()
         import os
-        #TODO:: figure out how to get the path to hanzi.srt
-        self.in_file = os.getcwd() + "/tests/files/hanzi.srt"
-        self.ref_file = os.getcwd() + "/tests/files/hanzi_pinyined.srt"
+        files_dir = os.path.join(os.path.join(os.getcwd(), 'tests'), 'files')
+        self.in_file = os.path.join(files_dir, 'hanzi.srt')
+        self.ref_file = os.path.join(files_dir, 'hanzi_pinyined.srt')
         self.srtDBToModify = unisub.SrtObject.fromFilename(self.in_file)
         self.srtDBToAdd = self.srtDBToModify.srtHanziToPinyin()
         self.srtDBRef = unisub.SrtObject.fromFilename(self.ref_file)

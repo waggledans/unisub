@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# encoding: utf-8
 
 # Copyright (c) 2015 Dan Slov
 #
@@ -24,10 +24,15 @@
 """ Module for parsing SubRip test files (.srt extension)  """
 import pinyin
 import re
+from srt_exceptions import SrtTimeFrameFormatException
+import logging
+log = logging.getLogger(__name__)
 
 
 class _CONST(object):
-    FOO = 1234
+    """
+    hacky way to define read-only class
+    """
     # pattern to match time of the sub line
     # Example: 00:00:03,748 --> 00:00:06,901
     timeFramePattern = "\t*(\d+:\d+:[\d,\,]+).*--\>.*(\d.*)"
@@ -45,6 +50,14 @@ CONST = _CONST()
 
 
 class _SrtEntry(object):
+    """
+    SubRip format entry example:
+        0
+        00:00:03,748 --> 00:00:06,901
+        Huānyíng dàjiā lái xuéxí zhōngjí hànyǔ yǔfǎ
+    Where first line is number, second is timeframe and
+    third is text 
+    """
     subNumber = 0
     timeFrame = ""
     subText = ""
@@ -80,10 +93,14 @@ class _SrtEntry(object):
             match = re.match(CONST.timeFramePattern, self.timeFrame)
             # Example: 00:00:03,748 --> 00:00:06,901
             if (match):
-                self.startTime = self._convertSrtFormatTime(match.group(1))
-                self.endTime = self._convertSrtFormatTime(match.group(2))
+                try:
+                    self.startTime = _SrtEntry._convertSrtFormatTime(match.group(1))
+                    self.endTime = _SrtEntry._convertSrtFormatTime(match.group(2))
+                except SrtTimeFrameFormatException as e:
+                    logging.error("Bad srt format %s" % str(e))
 
-    def _convertSrtFormatTime(self, srtTime):
+    @classmethod
+    def convertSrtFormatTime(srtTime):
         times = srtTime.split(':')
         if(len(times) == 3):
             # lastKey = match.group(1)
@@ -91,9 +108,7 @@ class _SrtEntry(object):
             return (mils + CONST.secondsInMinute*int(times[1]) +
                     CONST.secondsInHour * int(times[0]))
         else:
-            # smth is wrong, TODO:: raise EXCEPTION
-            # or maybe just do nothing
-            return 0
+            raise SrtTimeFrameFormatException(srtTime)
 
     def toString(self):
         return self.subNumber + self.timeFrame + self.subText
@@ -122,18 +137,19 @@ class SrtObject(object):
 
     @classmethod
     def fromFilename(cls, filename):
+        log.debug("parsing %s" % filename)
         srtDB = cls({})
         srtDB.buildSrtDB(filename)
         return srtDB
 
     def buildSrtDB(self, filename=""):
-        if not filename:
-            filename = self.filename
         """ buildSrtDB takes .srt file name as an argument.
             Timeframe of each entry is used as a dictionary key
             The value of the dictionary is the object containing
             (number, time, text) of subtitle entry
         """
+        if not filename:
+            filename = self.filename
         srtfile = open(filename, "r")
         saveOn = False
         # saveOn is True when a line containing time to show subs is matched
@@ -141,29 +157,31 @@ class SrtObject(object):
         lastKey = "NONEMATCHED"
         subNumber = 0
         for line in srtfile:
-            if(re.match(CONST.currentSubNumberPattern, line) and not saveOn):
-                # means we start a new sub
-                subNumber = line
-                continue
-            match = re.match(CONST.timeFramePattern, line)
-            # Example: 00:00:03,748 --> 00:00:06,901
-            if (match):
-                srtEntry = _SrtEntry(subNumber, line)
-                startTimes = match.group(1).split(':')
-                if(len(startTimes) == 3):
-                    saveOn = True
-                    lastKey = match.group(1)
-                    self.srtDB[lastKey] = srtEntry
-                else:
-                    # smth is wrong, TODO:: raise EXCEPTION
-                    # or maybe just do nothing
+            try:
+                if(re.match(CONST.currentSubNumberPattern, line) and not saveOn):
+                    # means we start a new sub
+                    subNumber = line
                     continue
-            else:
-                if (re.match(CONST.subSeparator, line)):
-                    saveOn = False    # saveOn is false, move to the next sub
-                if (saveOn):
-                    # assuming multiline sub
-                    self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
+                match = re.match(CONST.timeFramePattern, line)
+                # Example: 00:00:03,748 --> 00:00:06,901
+                if (match):
+                    srtEntry = _SrtEntry(subNumber, line)
+                    startTimes = match.group(1).split(':')
+                    if(len(startTimes) == 3):
+                        saveOn = True
+                        lastKey = match.group(1)
+                        self.srtDB[lastKey] = srtEntry
+                    else:
+                        raise SrtTimeFrameFormatException(match.group(1) + "in " + line)
+                else:
+                    if (re.match(CONST.subSeparator, line)):
+                        saveOn = False    # saveOn is false, move to the next sub
+                    if (saveOn):
+                        # assuming multiline sub
+                        logging.debug("Text spans mutlitple lines: %s" % line.rstrip())
+                        self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
+            except SrtTimeFrameFormatException as e:
+                logging.error("Bad srt format %s" % str(e))
         srtfile.close()
 
     def mergeSrtDB(self, subs2):

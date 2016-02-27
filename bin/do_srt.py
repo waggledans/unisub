@@ -28,6 +28,16 @@ from unisub import unisub
 import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
+import logging
+import logging.handlers
+rootLogger = logging.getLogger()
+rootLogger.setLevel(logging.ERROR)
+rootLogger.handlers = []
+logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -70,9 +80,17 @@ def main(argv=None):
         `bin/merge.py -i <subfile1> -e <subfile2> -o <output-file>`
     """
     args = parse_args()
+    if args.verbosity == 1:
+        rootLogger.setLevel(logging.WARNING)
+    elif args.verbosity == 2:
+        rootLogger.setLevel(logging.INFO)
+    elif args.verbosity == 3:
+        rootLogger.setLevel(logging.DEBUG)
     if not args.out_srt:
         args.out_srt = re.sub(r".srt$", ".out.srt", args.in_srt)
+        log.debug("setting --out-srt to %s" % args.out_srt)
     try:
+        log.debug("Parsing %s" % args.in_srt)
         srtDBToModify = unisub.SrtObject.fromFilename(args.in_srt)
         if not args.extra_srt:
             srtDBToAdd = srtDBToModify.srtHanziToPinyin()
@@ -80,13 +98,19 @@ def main(argv=None):
                 mergedSrtDB = srtDBToAdd
         elif (os.path.isfile(args.extra_srt) and
               os.access(args.extra_srt, os.R_OK)):
+            log.debug("extra srt %s found" % args.extra_srt)
             srtDBToAdd = unisub.SrtObject.fromFilename(args.extra_srt)
+            log.debug("parsed %s" % args.extra_srt)
+            log.debug("setting --combine-srt to True")
             args.combine_srt = True
     except (OSError, IOError) as e:
         print e
+        log.error("File error %s" % str(e))
         sys.exit(1)
     if args.combine_srt:
+        log.debug("merging 2 srts")
         mergedSrtDB = srtDBToModify.mergeSrtDB(srtDBToAdd)
+    log.debug("Printing output srt to %s" % args.out_srt)
     mergedSrtDB.printSrt(args.out_srt)
 
 
