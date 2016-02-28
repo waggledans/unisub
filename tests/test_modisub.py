@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import unittest
-from unisub import modisub, unisub
+from unisub import unisub
 
 
 class TestPinyin(unittest.TestCase):
@@ -17,6 +17,16 @@ class TestPinyin(unittest.TestCase):
 
     def testConvertTimeFormat(self):
         # key = "00:00:03,748 --> 00:00:06,901"
-        # new_sub = modisub._ModSrtEntry('0', key, "hello")
-        self.assertEqual(6.901, modisub._ModSrtEntry.convertFromSrtTime('00:00:06,901'))
-        self.assertEqual('00:00:06,901', modisub._ModSrtEntry.convertToSrtTime(6.901))
+        # new_sub = unisub._SrtEntry('0', key, "hello")
+        self.assertEqual(6.901, unisub._SrtEntry.convertFromSrtTime('00:00:06,901'))
+        self.assertEqual('00:00:06,901', unisub._SrtEntry.convertToSrtTime(6.901))
+
+    def testShiftFrame(self):
+        key = "00:00:03,748 --> 00:00:06,901"
+        new_sub = unisub._SrtEntry('0', key, "你好")
+        oldStart = new_sub.startTime
+        newStart = oldStart + 3.1
+        new_sub.shiftFrame(3.1)
+        self.assertEqual("%06.3f" % new_sub.startTime, "%06.3f" % newStart)
+        new_sub.shiftFrame(3.1, decr=True)
+        self.assertEqual("%06.3f" % new_sub.startTime, "%06.3f" % oldStart)

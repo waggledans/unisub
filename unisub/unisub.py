@@ -25,6 +25,7 @@
 import pinyin
 import re
 from srt_exceptions import SrtTimeFrameFormatException
+from srt_exceptions import SrtTimeFrameShiftException
 import logging
 log = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ class _CONST(object):
     """
     # pattern to match time of the sub line
     # Example: 00:00:03,748 --> 00:00:06,901
-    timeFramePattern = "\t*(\d+:\d+:[\d,\,]+).*--\>.*(\d.*)"
+    timePattern = r"\d+:\d+:[\d,\,]+"
+    timeFramePattern = r"\s*(" + timePattern + ")\s+-->\s+(" + timePattern + ")"
     # pattern to match ordinal number of the subtitle
     currentSubNumberPattern = "^\d+$"
     subSeparator = "^\t*$"
@@ -61,11 +63,122 @@ class _SrtEntry(object):
     subNumber = 0
     timeFrame = ""
     subText = ""
+    startTime = 0
+    endTime = 1
 
     def __init__(self, subNumber=0, timeFrame="", subText=""):
         self.subNumber = subNumber
         self.timeFrame = timeFrame
         self.subText = subText
+        self.extractTimeFromTimeFrame()
+
+    def extractTimeFromTimeFrame(self, timeFrame=None):
+        if not self.timeFrame and timeFrame is not None:
+            self.timeFrame = timeFrame
+        if not self.timeFrame:
+            self.startTime = 0
+            self.endTime = 0
+        else:
+            match = re.match(CONST.timeFramePattern, self.timeFrame)
+            # Example: 00:00:03,748 --> 00:00:06,901
+            if (match):
+                try:
+                    self.startTimeSrt = match.group(1)
+                    self.endTimeSrt = match.group(2)
+                    self.updateSrtTime()
+                    log.debug("matched %s in %s, parsed out %s and %s" %
+                              (CONST.timeFramePattern, self.timeFrame,
+                               self.startTimeSrt, self.endTimeSrt))
+                    log.debug("updated startTime to %s or %f, "
+                              "endTime to %s or %f" % (self.startTimeSrt,
+                                                       self.startTime,
+                                                       self.endTimeSrt,
+                                                       self.endTime
+                                                       )
+                              )
+                except SrtTimeFrameFormatException as e:
+                    logging.error("Bad srt format %s" % str(e))
+
+    def updateSrtTime(self):
+        self.startTime = _SrtEntry.convertFromSrtTime(self.startTimeSrt)
+        self.endTime = _SrtEntry.convertFromSrtTime(self.endTimeSrt)
+
+    @classmethod
+    def convertFromSrtTime(cls, srtTime):
+        """
+        converts srt time given as 00:00:03,748
+        into float number of seconds ie 3.748
+        """
+        times = srtTime.split(':')
+        if(len(times) == 3):
+            seconds = float(times[2].replace(',', '.'))
+            secSrt = seconds + CONST.secondsInMinute*int(times[1]) + CONST.secondsInHour * int(times[0])
+            log.debug("Converted %s into %f" % (srtTime, secSrt))
+            return secSrt
+        else:
+            raise SrtTimeFrameFormatException(srtTime)
+
+    @classmethod
+    def convertToSrtTime(cls, seconds):
+        """
+        converts float number of seconds like 3.748
+        into srt time given as 00:00:03,748
+        """
+        hoursSrt = int(seconds // CONST.secondsInHour)
+        leftSeconds = seconds - hoursSrt*CONST.secondsInHour
+        minSrt = int(leftSeconds // CONST.secondsInMinute)
+        leftSeconds -= minSrt*CONST.secondsInMinute
+        secSrt = "%06.3f" % leftSeconds
+        secSrt = secSrt.replace('.', ',', 1)
+        srtTime = "%(hours)02d:%(minutes)02d:%(seconds)s" % {'hours': hoursSrt,
+                                                             'minutes': minSrt,
+                                                             'seconds': secSrt
+                                                             }
+        log.debug("Converted %f into %s" % (seconds, srtTime))
+        return srtTime
+
+    def shiftFrame(self, seconds, incr=True, decr=False):
+        """
+        shift timeFrame by specified amount of seconds.
+        Either incr or decr must be set to True (incr is default)
+        Example: 00:00:03,748 --> 00:00:06,901 will become
+        00:00:06,848 --> 00:00:10,001 if shifted by 3.1
+        """
+        if decr:
+            incr = False
+        if incr:
+            log.debug("Shifting frame forward by %f seconds" % seconds)
+            self.startTime += seconds
+            self.endTime += seconds
+        else:
+            log.debug("Shifting frame backward by %f seconds" % seconds)
+            if self.startTime < seconds:
+                raise SrtTimeFrameShiftException("Cant shift earlier by more "
+                                                 "than %d" % self.startTime)
+            self.startTime -= seconds
+            self.endTime -= seconds
+        self.startTimeSrt = _SrtEntry.convertToSrtTime(self.startTime)
+        self.endTimeSrt = _SrtEntry.convertToSrtTime(self.endTime)
+        self._updateTimeFrame()
+
+    def _updateTimeFrame(self, startTime=None, endTime=None):
+        """updates srt entry timeFrame to new value"""
+        if startTime is None:
+            startTime = self.startTimeSrt
+        if endTime is None:
+            endTime = self.endTimeSrt
+        self.timeFrame = self._buildTimeFrame(startTime, endTime)
+
+    def _buildTimeFrame(self, startTime=None, endTime=None):
+        """
+        builds srt entry timeFrame to smth like
+        00:00:03,748 --> 00:00:06,901
+        """
+        if startTime is None:
+            startTime = self.startTimeSrt
+        if endTime is None:
+            endTime = self.endTimeSrt
+        return startTime + " --> " + endTime
 
     def __str__(self):
         return self.subNumber + ' ' + self.timeFrame + ' ' + self.subText

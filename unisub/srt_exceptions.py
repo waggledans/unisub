@@ -33,3 +33,10 @@ class SrtTimeFrameFormatException(Exception):
         Exception.__init__(self, "Wrong time format. "
                            "Expected smth like 00:00:06,901,"
                            "found {}".format(*args), **kwargs)
+
+
+class SrtTimeFrameShiftException(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, "Shift time should be less than "
+                           "start time of the first frame, when "
+                           "shifting earlier: {}".format(*args), **kwargs)
