@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 
-""" Module for parsing SubRip test files (.srt extension)  """
+""" Module for parsing SubRip files (.srt extension)  """
 import pinyin
 import re
 from srt_exceptions import SrtTimeFrameFormatException
@@ -56,13 +56,11 @@ class _SrtEntry(object):
         00:00:03,748 --> 00:00:06,901
         Huānyíng dàjiā lái xuéxí zhōngjí hànyǔ yǔfǎ
     Where first line is number, second is timeframe and
-    third is text 
+    third is text
     """
     subNumber = 0
     timeFrame = ""
     subText = ""
-    startTime = 0
-    endTime = 1
 
     def __init__(self, subNumber=0, timeFrame="", subText=""):
         self.subNumber = subNumber
@@ -84,31 +82,6 @@ class _SrtEntry(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    def extractTimeFromTimeFrame(self):
-        if not self.timeFrame:
-            self.startTime = 0
-            self.endTime = 0
-        else:
-            match = re.match(CONST.timeFramePattern, self.timeFrame)
-            # Example: 00:00:03,748 --> 00:00:06,901
-            if (match):
-                try:
-                    self.startTime = _SrtEntry._convertSrtFormatTime(match.group(1))
-                    self.endTime = _SrtEntry._convertSrtFormatTime(match.group(2))
-                except SrtTimeFrameFormatException as e:
-                    logging.error("Bad srt format %s" % str(e))
-
-    @classmethod
-    def convertSrtFormatTime(srtTime):
-        times = srtTime.split(':')
-        if(len(times) == 3):
-            # lastKey = match.group(1)
-            mils = float(times[2].replace(',', '.'))
-            return (mils + CONST.secondsInMinute*int(times[1]) +
-                    CONST.secondsInHour * int(times[0]))
-        else:
-            raise SrtTimeFrameFormatException(srtTime)
 
     def toString(self):
         return self.subNumber + self.timeFrame + self.subText
@@ -158,7 +131,8 @@ class SrtObject(object):
         subNumber = 0
         for line in srtfile:
             try:
-                if(re.match(CONST.currentSubNumberPattern, line) and not saveOn):
+                if(re.match(CONST.currentSubNumberPattern, line) and not
+                   saveOn):
                     # means we start a new sub
                     subNumber = line
                     continue
@@ -172,13 +146,16 @@ class SrtObject(object):
                         lastKey = match.group(1)
                         self.srtDB[lastKey] = srtEntry
                     else:
-                        raise SrtTimeFrameFormatException(match.group(1) + "in " + line)
+                        raise SrtTimeFrameFormatException(match.group(1) +
+                                                          "in " + line)
                 else:
                     if (re.match(CONST.subSeparator, line)):
-                        saveOn = False    # saveOn is false, move to the next sub
+                        saveOn = False
+                        # saveOn is false, move to the next sub
                     if (saveOn):
                         # assuming multiline sub
-                        logging.debug("Text spans mutlitple lines: %s" % line.rstrip())
+                        logging.debug("Text spans mutlitple lines: %s" %
+                                      line.rstrip())
                         self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
             except SrtTimeFrameFormatException as e:
                 logging.error("Bad srt format %s" % str(e))
@@ -234,20 +211,3 @@ class SrtObject(object):
                                 one_sub.subText + pin)
             subs_merged[key] = new_sub
         return SrtObject(subs_merged)
-
-
-class Date(object):
-    day = 0
-    month = 0
-    year = 0
-
-    def __init__(self, day=0, month=0, year=0):
-        self.day = day
-        self.month = month
-        self.year = year
-
-    @classmethod
-    def from_string(cls, date_as_string):
-        day, month, year = map(int, date_as_string.split('-'))
-        date1 = cls(day, month, year)
-        return date1

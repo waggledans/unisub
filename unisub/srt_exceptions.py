@@ -26,8 +26,10 @@ class SrtFormatException(Exception):
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, "Wrong .srt format. Expected ...,"
                            "found {}".format(*args), **kwargs)
-            # Example: 00:00:03,748 --> 00:00:06,901
+
+
 class SrtTimeFrameFormatException(Exception):
     def __init__(self, *args, **kwargs):
-        Exception.__init__(self, "Wrong time format. Expected smth like 00:00:06,901,"
+        Exception.__init__(self, "Wrong time format. "
+                           "Expected smth like 00:00:06,901,"
                            "found {}".format(*args), **kwargs)

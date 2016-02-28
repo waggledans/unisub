@@ -1,7 +1,7 @@
 # encoding: utf-8
 import setuptools
 
-version = "1.0.1"
+version = "1.1.0"
 
 # Generate Requirements
 requirements = list()
