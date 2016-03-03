@@ -56,7 +56,7 @@ class _SrtEntry(object):
         00:00:03,748 --> 00:00:06,901
         Huānyíng dàjiā lái xuéxí zhōngjí hànyǔ yǔfǎ
     Where first line is number, second is timeframe and
-    third is text 
+    the third is text
     """
     subNumber = 0
     timeFrame = ""
@@ -97,7 +97,7 @@ class _SrtEntry(object):
                     self.startTime = _SrtEntry._convertSrtFormatTime(match.group(1))
                     self.endTime = _SrtEntry._convertSrtFormatTime(match.group(2))
                 except SrtTimeFrameFormatException as e:
-                    logging.error("Bad srt format %s" % str(e))
+                    log.error("Bad srt format %s" % str(e))
 
     @classmethod
     def convertSrtFormatTime(srtTime):
@@ -137,7 +137,7 @@ class SrtObject(object):
 
     @classmethod
     def fromFilename(cls, filename):
-        log.debug("parsing %s" % filename)
+        log.debug("parsing %s", filename)
         srtDB = cls({})
         srtDB.buildSrtDB(filename)
         return srtDB
@@ -172,16 +172,17 @@ class SrtObject(object):
                         lastKey = match.group(1)
                         self.srtDB[lastKey] = srtEntry
                     else:
-                        raise SrtTimeFrameFormatException(match.group(1) + "in " + line)
+                        ermsg = "{} in {!r}".format(match.group(1), line)
+                        raise SrtTimeFrameFormatException(ermsg)
                 else:
                     if (re.match(CONST.subSeparator, line)):
                         saveOn = False    # saveOn is false, move to the next sub
                     if (saveOn):
                         # assuming multiline sub
-                        logging.debug("Text spans mutlitple lines: %s" % line.rstrip())
+                        log.debug("Text spans mutlitple lines: {!r}".format(line))
                         self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
             except SrtTimeFrameFormatException as e:
-                logging.error("Bad srt format %s" % str(e))
+                log.error("Bad srt format %s" % str(e))
         srtfile.close()
 
     def mergeSrtDB(self, subs2):
@@ -198,6 +199,9 @@ class SrtObject(object):
                 record = _SrtEntry(record1.subNumber, record1.timeFrame,
                                    record1.subText + record2.subText)
                 subs_merged[key1] = record
+            else:
+                log.debug("key {} is not found in sub being merged: {!s}".
+                          format(key1, record1))
         return SrtObject(subs_merged)
 
     def printSrt(self, filename):
@@ -234,20 +238,3 @@ class SrtObject(object):
                                 one_sub.subText + pin)
             subs_merged[key] = new_sub
         return SrtObject(subs_merged)
-
-
-class Date(object):
-    day = 0
-    month = 0
-    year = 0
-
-    def __init__(self, day=0, month=0, year=0):
-        self.day = day
-        self.month = month
-        self.year = year
-
-    @classmethod
-    def from_string(cls, date_as_string):
-        day, month, year = map(int, date_as_string.split('-'))
-        date1 = cls(day, month, year)
-        return date1
