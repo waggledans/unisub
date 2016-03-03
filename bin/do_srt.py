@@ -90,7 +90,7 @@ def main(argv=None):
         rootLogger.setLevel(logging.NOTSET)
     if not args.out_srt:
         args.out_srt = re.sub(r".srt$", ".out.srt", args.in_srt)
-        log.debug("setting --out-srt to %s" % args.out_srt)
+        log.debug("setting --out-srt to %s", args.out_srt)
     try:
         log.debug("Parsing %s" % args.in_srt)
         srtDBToModify = unisub.SrtObject.fromFilename(args.in_srt)
@@ -107,12 +107,12 @@ def main(argv=None):
             args.combine_srt = True
     except (OSError, IOError) as e:
         print e
-        log.error("File error %s" % str(e))
+        log.error("File error {!s}".format(e))
         sys.exit(1)
     if args.combine_srt:
         log.debug("merging 2 srts")
         mergedSrtDB = srtDBToModify.mergeSrtDB(srtDBToAdd)
-    log.debug("Printing output srt to %s" % args.out_srt)
+    log.debug("Printing output srt to %s", args.out_srt)
     mergedSrtDB.printSrt(args.out_srt)
 
 

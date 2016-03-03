@@ -58,7 +58,7 @@ class _SrtEntry(object):
         00:00:03,748 --> 00:00:06,901
         Huānyíng dàjiā lái xuéxí zhōngjí hànyǔ yǔfǎ
     Where first line is number, second is timeframe and
-    third is text
+    the third is text
     """
     subNumber = 0
     timeFrame = ""
@@ -97,7 +97,7 @@ class _SrtEntry(object):
                                                        )
                               )
                 except SrtTimeFrameFormatException as e:
-                    logging.error("Bad srt format %s" % str(e))
+                    log.error("Bad srt format %s" % str(e))
 
     def updateSrtTime(self):
         self.startTime = _SrtEntry.convertFromSrtTime(self.startTimeSrt)
@@ -208,6 +208,7 @@ class SrtObject(object):
         #  init class members ######
         self.srtDB = srtDB
         self.filename = ""
+        self.name = "unknown_file"
 
     def __str__(self):
         return str(self.srtDB)
@@ -223,9 +224,10 @@ class SrtObject(object):
 
     @classmethod
     def fromFilename(cls, filename):
-        log.debug("parsing %s" % filename)
+        log.debug("parsing %s", filename)
         srtDB = cls({})
         srtDB.buildSrtDB(filename)
+        srtDB.name = filename
         return srtDB
 
     def buildSrtDB(self, filename=""):
@@ -259,19 +261,18 @@ class SrtObject(object):
                         lastKey = match.group(1)
                         self.srtDB[lastKey] = srtEntry
                     else:
-                        raise SrtTimeFrameFormatException(match.group(1) +
-                                                          "in " + line)
+                        ermsg = "{} in {!r}".format(match.group(1), line)
+                        raise SrtTimeFrameFormatException(ermsg)
                 else:
                     if (re.match(CONST.subSeparator, line)):
                         saveOn = False
                         # saveOn is false, move to the next sub
                     if (saveOn):
                         # assuming multiline sub
-                        logging.debug("Text spans mutlitple lines: %s" %
-                                      line.rstrip())
+                        log.debug("Text spans mutlitple lines: {!r}".format(line))
                         self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
             except SrtTimeFrameFormatException as e:
-                logging.error("Bad srt format %s" % str(e))
+                log.error("Bad srt format %s" % str(e))
         srtfile.close()
 
     def mergeSrtDB(self, subs2):
@@ -280,6 +281,7 @@ class SrtObject(object):
         mergeSrtDB assumes that both dictionaries
         contain exactly the same set of keys
         """
+        log.debug("merging 2 srt files")
         subs_merged = {}
         for key1 in self.srtDB:
             if (subs2.srtDB[key1]):
@@ -288,12 +290,17 @@ class SrtObject(object):
                 record = _SrtEntry(record1.subNumber, record1.timeFrame,
                                    record1.subText + record2.subText)
                 subs_merged[key1] = record
+            else:
+                # TODO:: try to find matching sub  (closest in time maybe?)
+                log.debug("key {} is not found in sub being merged: {!s}".
+                          format(key1, record1))
         return SrtObject(subs_merged)
 
     def printSrt(self, filename):
         """
         Prints subtitles object in .srt format
         """
+        log.debug("printing srt to {!r}".format(filename))
         srtfile = open(filename, "w")
         for key in sorted(self.srtDB):
             srtfile.write(self.srtDB[key].toString())
@@ -304,6 +311,7 @@ class SrtObject(object):
         """
         Converts all hanzi to pinyin
         """
+        log.debug("Converting hanzi to pinyin")
         subs_pinyin = {}
         for key in self.srtDB:
             one_sub = self.srtDB[key]
@@ -316,6 +324,7 @@ class SrtObject(object):
         """
         Appends pinyin to hanzi text
         """
+        log.debug("adding pinyin to hanzi")
         subs_merged = {}
         for key in self.srtDB:
             one_sub = self.srtDB[key]
