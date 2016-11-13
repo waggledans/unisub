@@ -27,6 +27,7 @@ import re
 from srt_exceptions import SrtTimeFrameFormatException
 from srt_exceptions import SrtTimeFrameShiftException
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -72,32 +73,39 @@ class _SrtEntry(object):
         self.subText = subText
         self.extractTimeFromTimeFrame()
 
-    def extractTimeFromTimeFrame(self, timeFrame=None):
-        if not self.timeFrame and timeFrame is not None:
-            self.timeFrame = timeFrame
+    def extractTimeFromTimeFrame(self):
         if not self.timeFrame:
-            self.startTime = 0
-            self.endTime = 0
-        else:
-            match = re.match(CONST.timeFramePattern, self.timeFrame)
-            # Example: 00:00:03,748 --> 00:00:06,901
-            if (match):
-                try:
-                    self.startTimeSrt = match.group(1)
-                    self.endTimeSrt = match.group(2)
-                    self.updateSrtTime()
-                    log.debug("matched %s in %s, parsed out %s and %s" %
-                              (CONST.timeFramePattern, self.timeFrame,
-                               self.startTimeSrt, self.endTimeSrt))
-                    log.debug("updated startTime to %s or %f, "
-                              "endTime to %s or %f" % (self.startTimeSrt,
-                                                       self.startTime,
-                                                       self.endTimeSrt,
-                                                       self.endTime
-                                                       )
-                              )
-                except SrtTimeFrameFormatException as e:
-                    log.error("Bad srt format %s" % str(e))
+            return
+        match = re.match(CONST.timeFramePattern, self.timeFrame)
+        # match = re.match(CONST.timeFramePattern, line)
+        # if(len(startTimes) == 3):
+        # else:
+        #     ermsg = "{} in {!r}".format(match.group(1), line)
+        #     raise SrtTimeFrameFormatException(ermsg)
+        # Example: 00:00:03,748 --> 00:00:06,901
+        if (match):
+            try:
+                self.startTimeSrt = match.group(1)
+                self.endTimeSrt = match.group(2)
+                self.updateSrtTime()
+                log.debug("matched %s in %s, parsed out %s and %s" %
+                          (CONST.timeFramePattern, self.timeFrame.rstrip(),
+                           self.startTimeSrt, self.endTimeSrt))
+                log.debug("updated startTime to %s or %f, "
+                          "endTime to %s or %f" % (self.startTimeSrt,
+                                                   self.startTime,
+                                                   self.endTimeSrt,
+                                                   self.endTime
+                                                   )
+                          )
+            except SrtTimeFrameFormatException as e:
+                log.error("Bad srt format %s" % str(e))
+                raise e
+
+    def updateSrtText(self, line):
+        if self.subText:
+            log.debug("Text spans mutlitple lines: {!r}".format(line))
+        self.subText = self.subText + line
 
     def updateSrtTime(self):
         self.startTime = _SrtEntry.convertFromSrtTime(self.startTimeSrt)
@@ -112,7 +120,7 @@ class _SrtEntry(object):
         times = srtTime.split(':')
         if(len(times) == 3):
             seconds = float(times[2].replace(',', '.'))
-            secSrt = seconds + CONST.secondsInMinute*int(times[1]) + CONST.secondsInHour * int(times[0])
+            secSrt = seconds + CONST.secondsInMinute * int(times[1]) + CONST.secondsInHour * int(times[0])
             log.debug("Converted %s into %f" % (srtTime, secSrt))
             return secSrt
         else:
@@ -125,9 +133,9 @@ class _SrtEntry(object):
         into srt time given as 00:00:03,748
         """
         hoursSrt = int(seconds // CONST.secondsInHour)
-        leftSeconds = seconds - hoursSrt*CONST.secondsInHour
+        leftSeconds = seconds - hoursSrt * CONST.secondsInHour
         minSrt = int(leftSeconds // CONST.secondsInMinute)
-        leftSeconds -= minSrt*CONST.secondsInMinute
+        leftSeconds -= minSrt * CONST.secondsInMinute
         secSrt = "%06.3f" % leftSeconds
         secSrt = secSrt.replace('.', ',', 1)
         srtTime = "%(hours)02d:%(minutes)02d:%(seconds)s" % {'hours': hoursSrt,
@@ -246,31 +254,23 @@ class SrtObject(object):
         subNumber = 0
         for line in srtfile:
             try:
-                if(re.match(CONST.currentSubNumberPattern, line) and not
-                   saveOn):
+                if(re.match(CONST.currentSubNumberPattern, line) and not saveOn):
                     # means we start a new sub
                     subNumber = line
                     continue
                 match = re.match(CONST.timeFramePattern, line)
                 # Example: 00:00:03,748 --> 00:00:06,901
                 if (match):
-                    srtEntry = _SrtEntry(subNumber, line)
-                    startTimes = match.group(1).split(':')
-                    if(len(startTimes) == 3):
-                        saveOn = True
-                        lastKey = match.group(1)
-                        self.srtDB[lastKey] = srtEntry
-                    else:
-                        ermsg = "{} in {!r}".format(match.group(1), line)
-                        raise SrtTimeFrameFormatException(ermsg)
+                    srtEntry = _SrtEntry(subNumber, timeFrame=line)
+                    saveOn = True
+                    lastKey = match.group(1)
+                    self.srtDB[lastKey] = srtEntry
                 else:
                     if (re.match(CONST.subSeparator, line)):
                         saveOn = False
                         # saveOn is false, move to the next sub
                     if (saveOn):
-                        # assuming multiline sub
-                        log.debug("Text spans mutlitple lines: {!r}".format(line))
-                        self.srtDB[lastKey].subText = self.srtDB[lastKey].subText + line
+                        self.srtDB[lastKey].updateSrtText(line)
             except SrtTimeFrameFormatException as e:
                 log.error("Bad srt format %s" % str(e))
         srtfile.close()
@@ -315,7 +315,8 @@ class SrtObject(object):
         subs_pinyin = {}
         for key in self.srtDB:
             one_sub = self.srtDB[key]
-            pin = pinyin.get(one_sub.subText)
+            pin = pinyin.get(one_sub.subText.decode('utf-8'))
+            log.debug("Pinyin of %s is %s", one_sub.subText, pin)
             new_sub = _SrtEntry(one_sub.subNumber, one_sub.timeFrame, pin)
             subs_pinyin[key] = new_sub
         return SrtObject(subs_pinyin)

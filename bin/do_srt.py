@@ -25,15 +25,17 @@ import re
 import os
 import os.path
 from unisub import unisub
+import logging
+import logging.handlers
 import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
-import logging
-import logging.handlers
 rootLogger = logging.getLogger()
 rootLogger.setLevel(logging.CRITICAL)
 rootLogger.handlers = []
-logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+format_str = ("%(asctime)s - %(name)s[%(funcName)s:"
+              "%(lineno)s] - %(levelname)s - %(message)s")
+logFormatter = logging.Formatter(format_str)
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logFormatter)
 rootLogger.addHandler(consoleHandler)
